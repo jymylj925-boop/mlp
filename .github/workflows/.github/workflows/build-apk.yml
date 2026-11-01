@@ -1,0 +1,45 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract ZIP
+        run: |
+          mkdir extracted
+          unzip -q *.zip -d extracted
+          ANDROID_DIR=$(find "$GITHUB_WORKSPACE/extracted" -type d -name android -print -quit)
+          if [ -z "$ANDROID_DIR" ]; then
+            echo "Android project not found"
+            exit 1
+          fi
+          echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        run: |
+          gradle -p "$ANDROID_DIR" assembleDebug
+          cp "$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk" app-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MR-FILM-debug-apk
+          path: app-debug.apk
